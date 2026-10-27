@@ -1,0 +1,65 @@
+name: Conseguir VM Oracle
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency: conseguir-vm-oracle
+
+permissions:
+  actions: write
+  issues: write
+
+jobs:
+  launch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      OCI_CLI_USER: ${{ secrets.OCI_USER }}
+      OCI_CLI_TENANCY: ${{ secrets.OCI_TENANCY }}
+      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_KEY }}
+      OCI_CLI_REGION: eu-madrid-1
+      OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: "True"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Instalar OCI CLI
+        run: pip install -q oci-cli
+
+      - name: Intentar crear la máquina
+        run: |
+          C="$OCI_CLI_TENANCY"
+          existing=$(oci compute instance list -c "$C" --display-name proxypinga \
+            --query "length(data[?\"lifecycle-state\"!='TERMINATED'])" --raw-output 2>/dev/null || echo 0)
+          if [ "${existing:-0}" != "0" ]; then
+            echo "Ya existe una máquina proxypinga. Desactivo este workflow."
+            gh workflow disable "Conseguir VM Oracle" -R "$GITHUB_REPOSITORY" || true
+            exit 0
+          fi
+          AD=$(oci iam availability-domain list -c "$C" --query 'data[0].name' --raw-output)
+          SUB=$(oci network subnet list -c "$C" --display-name "public subnet-proxypinga" --query 'data[0].id' --raw-output)
+          IMG=$(oci compute image list -c "$C" --operating-system "Canonical Ubuntu" --operating-system-version "24.04" \
+            --shape VM.Standard.A1.Flex --sort-by TIMECREATED --query 'data[0].id' --raw-output)
+          echo "${{ secrets.SSH_PUB }}" > key.pub
+          for i in 1 2 3 4 5 6 7; do
+            if out=$(oci compute instance launch -c "$C" --availability-domain "$AD" --display-name proxypinga \
+                --shape VM.Standard.A1.Flex --shape-config '{"ocpus":4,"memoryInGBs":24}' \
+                --image-id "$IMG" --subnet-id "$SUB" --assign-public-ip true --boot-volume-size-in-gbs 100 \
+                --ssh-authorized-keys-file key.pub 2>&1); then
+              echo "CREADA"
+              gh issue create -R "$GITHUB_REPOSITORY" --title "Máquina de Oracle creada" \
+                --body "El workflow ha conseguido crear la máquina proxypinga (4 OCPU, 24 GB) en Madrid. Mira su IP pública en Compute → Instances." || true
+              gh workflow disable "Conseguir VM Oracle" -R "$GITHUB_REPOSITORY" || true
+              exit 0
+            fi
+            if echo "$out" | grep -qi "capacity"; then
+              echo "$(date +%H:%M:%S) sin hueco, reintento en 60 s"
+              sleep 60
+            else
+              echo "$out"
+              echo "Error distinto a falta de capacidad; paro para no insistir con algo roto."
+              exit 1
+            fi
+          done
+          echo "Sin hueco en esta tanda; lo vuelvo a intentar en la próxima ejecución."
