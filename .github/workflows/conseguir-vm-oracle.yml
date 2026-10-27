@@ -43,10 +43,11 @@ jobs:
             --shape VM.Standard.A1.Flex --sort-by TIMECREATED --query 'data[0].id' --raw-output)
           echo "${{ secrets.SSH_PUB }}" > key.pub
           for i in 1 2 3 4 5 6 7; do
+            [ "$SECONDS" -gt 330 ] && break
             if out=$(oci compute instance launch -c "$C" --availability-domain "$AD" --display-name proxypinga \
                 --shape VM.Standard.A1.Flex --shape-config '{"ocpus":4,"memoryInGBs":24}' \
                 --image-id "$IMG" --subnet-id "$SUB" --assign-public-ip true --boot-volume-size-in-gbs 100 \
-                --ssh-authorized-keys-file key.pub 2>&1); then
+                --ssh-authorized-keys-file key.pub --no-retry 2>&1); then
               echo "CREADA"
               gh issue create -R "$GITHUB_REPOSITORY" --title "Máquina de Oracle creada" \
                 --body "El workflow ha conseguido crear la máquina proxypinga (4 OCPU, 24 GB) en Madrid. Mira su IP pública en Compute → Instances." || true
