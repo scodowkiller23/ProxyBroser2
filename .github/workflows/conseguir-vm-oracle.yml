@@ -53,12 +53,13 @@ jobs:
               gh workflow disable "Conseguir VM Oracle" -R "$GITHUB_REPOSITORY" || true
               exit 0
             fi
-            if echo "$out" | grep -qi "capacity"; then
-              echo "$(date +%H:%M:%S) sin hueco, reintento en 60 s"
+            resumen=$(echo "$out" | grep -oE '"(code|message|status)": *[^,}]*' | tr '\n' ' ' | head -c 400 || true)
+            if echo "$out" | grep -qiE "capacity|TooManyRequests|InternalError|\"status\": *(429|5[0-9][0-9])"; then
+              echo "::notice::$(date +%H:%M:%S) intento $i sin hueco o Oracle saturado, reintento en 60 s: $resumen"
               sleep 60
             else
               echo "$out"
-              echo "Error distinto a falta de capacidad; paro para no insistir con algo roto."
+              echo "::error::Error distinto a falta de capacidad: ${resumen:-$(echo "$out" | tail -3 | tr '\n' ' ' | head -c 400)}"
               exit 1
             fi
           done
