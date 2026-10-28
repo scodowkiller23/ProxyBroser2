@@ -38,7 +38,13 @@ function WebView({ tab, active, scramjet, register, onUrl, onTitle }) {
     box.current.appendChild(frame.frame);
     const decode = (u) => { try { return u.includes('/scramjet/') ? scramjet.decodeUrl(u) : u; } catch { return u; } };
     frame.addEventListener('urlchange', (e) => onUrl(tab.id, decode(e.url)));
-    frame.go(tab.url);
+    // Firefox sustituye el documento inicial del iframe en cuanto se añade al DOM, así que
+    // si navegamos en el mismo instante se pierde la navegación y el marco se queda en blanco.
+    // Vamos a lo primero que ocurra: su "load" inicial o un respiro de 50 ms.
+    let started = false;
+    const start = () => { if (!started) { started = true; frame.go(tab.url); } };
+    frame.frame.addEventListener('load', start, { once: true });
+    const startTimer = setTimeout(start, 50);
     register(tab.id, frame);
     const titleTimer = setInterval(() => {
       try {
@@ -46,7 +52,7 @@ function WebView({ tab, active, scramjet, register, onUrl, onTitle }) {
         if (t) onTitle(tab.id, t);
       } catch { /* aún cargando */ }
     }, 1200);
-    return () => { clearInterval(titleTimer); register(tab.id, null); frame.frame.remove(); };
+    return () => { clearTimeout(startTimer); clearInterval(titleTimer); register(tab.id, null); frame.frame.remove(); };
     // El frame se crea una vez por pestaña; las navegaciones van por frame.go().
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scramjet]);
