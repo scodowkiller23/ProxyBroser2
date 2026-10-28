@@ -10,8 +10,16 @@ export function initProxy() {
       files: { wasm: '/scram/scramjet.wasm.wasm', all: '/scram/scramjet.all.js', sync: '/scram/scramjet.sync.js' },
     });
     await scramjet.init();
-    await navigator.serviceWorker.register('/sw.js');
+    const reg = await navigator.serviceWorker.register('/sw.js');
     await navigator.serviceWorker.ready;
+    // Si acaba de entrar un service worker nuevo, la página sigue con el viejo hasta que
+    // se recarga, y entonces parece que el cambio no ha llegado. Recargamos una sola vez.
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (sessionStorage.getItem('pp-sw-reload')) return;
+      try { sessionStorage.setItem('pp-sw-reload', '1'); } catch { /* sin almacenamiento */ }
+      location.reload();
+    });
+    reg.update().catch(() => {});
     const connection = new window.BareMux.BareMuxConnection('/baremux/worker.js');
     const wispUrl = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/wisp/';
     if ((await connection.getTransport()) !== '/libcurl/index.mjs') {

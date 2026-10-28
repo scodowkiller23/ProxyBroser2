@@ -6,25 +6,31 @@ const scramjet = new ScramjetServiceWorker();
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
-// Firefox aplica X-Frame-Options tambien a las respuestas de redireccion
-// (bug 1593321 de Mozilla), y como todo se ve dentro de un iframe corta la pestana
-// con NS_ERROR_BLOCKED_BY_POLICY. Chromium no lo hace, por eso en Opera si iba.
-// Quitamos la cabecera (y el frame-ancestors del CSP) de todo lo que devolvemos.
-function allowFraming(response) {
+// La página de arriba va con Cross-Origin-Embedder-Policy, así que el navegador exige
+// que el documento del iframe traiga también esa cabecera o lo bloquea. Firefox corta
+// con NS_ERROR_BLOCKED_BY_POLICY ("Blocked Page"); Chromium se lo salta, por eso en
+// Opera GX sí funcionaba. Scramjet quita esas cabeceras de la web original, así que
+// se las ponemos nosotros a lo que sirve el service worker.
+function fixFraming(response, request) {
   if (response.type === 'opaqueredirect' || response.type === 'opaque') return response;
-  let csp;
+  const frameLoad = request.mode === 'navigate'
+    || ['document', 'iframe', 'frame', 'embed', 'object'].includes(request.destination);
+  let headers;
   try {
-    csp = response.headers.get('content-security-policy');
-    if (!response.headers.has('x-frame-options') && !(csp && /frame-ancestors/i.test(csp))) return response;
+    headers = new Headers(response.headers);
   } catch {
     return response;
   }
-  const headers = new Headers(response.headers);
+  const csp = headers.get('content-security-policy');
   headers.delete('x-frame-options');
-  if (csp) {
+  if (csp && /frame-ancestors/i.test(csp)) {
     const clean = csp.replace(/frame-ancestors[^;]*;?/gi, '').trim();
     if (clean) headers.set('content-security-policy', clean);
     else headers.delete('content-security-policy');
+  }
+  if (frameLoad) {
+    headers.set('cross-origin-embedder-policy', 'credentialless');
+    headers.set('cross-origin-resource-policy', 'same-origin');
   }
   const redirect = response.status >= 300 && response.status < 400;
   return new Response(redirect ? null : response.body, {
@@ -36,7 +42,7 @@ function allowFraming(response) {
 
 async function handleRequest(event) {
   await scramjet.loadConfig();
-  if (scramjet.route(event)) return allowFraming(await scramjet.fetch(event));
+  if (scramjet.route(event)) return fixFraming(await scramjet.fetch(event), event.request);
   return fetch(event.request);
 }
 
