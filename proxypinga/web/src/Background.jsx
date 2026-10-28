@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { motion } from 'motion/react';
 import { gradientParams } from './theme.js';
 
 const VS = '#version 300 es\nin vec4 a_position;void main(){gl_Position=a_position;}';
@@ -67,30 +68,36 @@ function Gradient({ params }) {
   return <canvas ref={ref} className="pp-fade bg-fill" aria-hidden="true" />;
 }
 
-function Waves() {
-  const paths = useMemo(() => {
-    const out = [];
-    [1, -1].forEach((pos) => {
-      for (let i = 0; i < 36; i++) {
-        const a = 380 - i * 5 * pos, b = 312 - i * 5 * pos, c = 152 - i * 5 * pos, e = 616 - i * 5 * pos, f = 684 - i * 5 * pos;
-        out.push({
-          d: `M-${a} -${189 + i * 6}C-${a} -${189 + i * 6} -${b} ${216 - i * 6} ${c} ${343 - i * 6}C${e} ${470 - i * 6} ${f} ${875 - i * 6} ${f} ${875 - i * 6}`,
-          w: (0.5 + i * 0.03).toFixed(2),
-          op: Math.min(1, 0.1 + i * 0.03) * 0.55,
-          dur: 7 + ((i * 37 + (pos > 0 ? 3 : 7)) % 5),
-        });
-      }
-    });
-    return out;
-  }, []);
-  const quieto = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Las olas son el componente de la plantilla tal cual, con Framer Motion: anima
+// pathLength y pathOffset, que es lo que hace que las lineas fluyan de verdad.
+function Waves({ pos }) {
+  const paths = Array.from({ length: 36 }, (_, i) => ({
+    id: i,
+    d: `M-${380 - i * 5 * pos} -${189 + i * 6}C-${380 - i * 5 * pos} -${189 + i * 6} -${312 - i * 5 * pos} ${216 - i * 6} ${152 - i * 5 * pos} ${343 - i * 6}C${616 - i * 5 * pos} ${470 - i * 6} ${684 - i * 5 * pos} ${875 - i * 6} ${684 - i * 5 * pos} ${875 - i * 6}`,
+    width: 0.5 + i * 0.03,
+  }));
+
   return (
     <svg className="pp-wave pp-fade bg-fill" viewBox="0 0 696 316" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true">
-      {paths.map((w, i) => (
-        <path key={i} d={w.d} stroke="var(--on)" strokeWidth={w.w} strokeOpacity={w.op} strokeDasharray="150 170">
-          {/* Animación del propio SVG en vez de CSS: Firefox la lleva desde siempre. */}
-          {!quieto && <animate attributeName="stroke-dashoffset" from="0" to="-320" dur={w.dur + 's'} repeatCount="indefinite" />}
-        </path>
+      {paths.map((path) => (
+        <motion.path
+          key={path.id}
+          d={path.d}
+          stroke="var(--on)"
+          strokeWidth={path.width}
+          strokeOpacity={0.1 + path.id * 0.03}
+          initial={{ pathLength: 0.3, opacity: 0.6 }}
+          animate={{
+            pathLength: 1,
+            opacity: [0.3, 0.6, 0.3],
+            pathOffset: [0, 1, 0],
+          }}
+          transition={{
+            duration: 20 + Math.random() * 10,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+        />
       ))}
     </svg>
   );
@@ -100,7 +107,7 @@ export default function Background({ s }) {
   return (
     <>
       {s.bgMode === 0 && <Gradient params={gradientParams(s)} />}
-      {s.bgMode === 1 && <Waves />}
+      {s.bgMode === 1 && <><Waves pos={1} /><Waves pos={-1} /></>}
       {s.bgMode === 3 && s.img && <img src={s.img} alt="" className="pp-fade bg-fill" style={{ objectFit: 'cover' }} />}
       <div aria-hidden="true" className="bg-fill pp-t" style={{ background: 'var(--bg)', opacity: s.dim / 100 }} />
     </>

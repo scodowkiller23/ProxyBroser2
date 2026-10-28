@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   root: 'web',
+  // Marca de compilacion, para saber de un vistazo si el navegador tiene la version nueva.
+  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(5, 16).replace('T', ' ')) },
   plugins: [react()],
   build: { outDir: 'dist', emptyOutDir: true },
   server: {

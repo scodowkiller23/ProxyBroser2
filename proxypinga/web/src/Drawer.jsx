@@ -159,6 +159,7 @@ export default function Drawer({ s, set, reset, open, onClose, editShortcuts, se
       <section>
         <h2>Cuenta</h2>
         <p className="muted small">Tu foto, la contraseña y cerrar sesión están en tu icono, arriba a la derecha.</p>
+        <p className="muted small">Versión {__BUILD__}</p>
       </section>
     </aside>
   );
