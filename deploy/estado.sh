@@ -3,7 +3,7 @@ echo "nucleos: $(nproc)  memoria: $(free -h | awk '/Mem/{print $2" total, "$7" l
 docker --version 2>&1 || echo "docker: NO instalado"
 sudo iptables -S INPUT | grep -E 'dport (80|443)' || echo "iptables: 80/443 NO abiertos"
 docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null
-D=143-47-39-212.sslip.io
+D=proxypinga.duckdns.org
 echo "https: $(curl -s -o /dev/null -w '%{http_code} cert_ok=%{ssl_verify_result}' --resolve $D:443:127.0.0.1 https://$D/api/notice)"
 cd ~/proxypinga 2>/dev/null && docker compose logs caddy 2>&1 | grep -iE 'certificate obtained|error' | tail -5
 echo "-- salida a Internet"
@@ -35,7 +35,7 @@ else
   echo "contenedor app: no encontrado"
 fi
 echo "-- version servida"
-D2=143-47-39-212.sslip.io
+D2=proxypinga.duckdns.org
 IDX=$(curl -s -m 15 --resolve $D2:443:127.0.0.1 https://$D2/)
 for A in $(echo "$IDX" | grep -o 'assets/index-[A-Za-z0-9_-]*\.\(js\|css\)'); do
   B=$(curl -s -m 20 --resolve $D2:443:127.0.0.1 "https://$D2/$A")
