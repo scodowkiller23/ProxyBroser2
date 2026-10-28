@@ -35,19 +35,22 @@ function Entrada({ onIn, expired }) {
 
   return (
     <div className="login pp">
-      <form className="login-card pp-card pp-in" onSubmit={submit}>
+      <form className={'login-card pp-card pp-in' + (reg ? ' is-reg' : '')} onSubmit={submit}>
         <img src="/sprites/bienvenida.webp" alt="" className="login-hero" />
-        <h1>{reg ? 'Crear tu cuenta' : 'Entrar en ProxyPinga'}</h1>
+        <h1 key={mode} className="pp-swap-title">{reg ? 'Crear tu cuenta' : 'Entrar en ProxyPinga'}</h1>
         {canRegister && (
-          <div className="chips">
+          <div className="chips tabs2">
+            <span className="tabs2-pill" style={{ transform: `translateX(${reg ? 100 : 0}%)` }} aria-hidden="true" />
             <button type="button" className={'chip' + (!reg ? ' on' : '')} onClick={() => { setMode('login'); setErr(''); }}>Entrar</button>
             <button type="button" className={'chip' + (reg ? ' on' : '')} onClick={() => { setMode('register'); setErr(''); }}>Registrarme</button>
           </div>
         )}
-        <label>Usuario<input autoComplete="username" value={f.username} onChange={upd('username')} autoFocus /></label>
-        {reg && <label>Nombre visible (opcional)<input value={f.display} onChange={upd('display')} placeholder="Como quieres que te vean" /></label>}
-        <label>Contraseña<input type="password" autoComplete={reg ? 'new-password' : 'current-password'} value={f.password} onChange={upd('password')} /></label>
-        {reg && <label>Código de clase<input value={f.code} onChange={upd('code')} placeholder="Te lo da Iván" autoCapitalize="characters" /></label>}
+        <div key={mode} className="login-fields">
+          <label style={{ '--i': 0 }}>Usuario<input autoComplete="username" value={f.username} onChange={upd('username')} autoFocus /></label>
+          {reg && <label style={{ '--i': 1 }}>Nombre visible (opcional)<input value={f.display} onChange={upd('display')} placeholder="Como quieres que te vean" /></label>}
+          <label style={{ '--i': reg ? 2 : 1 }}>Contraseña<input type="password" autoComplete={reg ? 'new-password' : 'current-password'} value={f.password} onChange={upd('password')} /></label>
+          {reg && <label style={{ '--i': 3 }}>Código de clase<input value={f.code} onChange={upd('code')} placeholder="Te lo da Iván" autoCapitalize="characters" /></label>}
+        </div>
         <div className="notice">
           <img src="/sprites/supervisada.webp" alt="" width="54" />
           <p>{notice}</p>
@@ -56,6 +59,26 @@ function Entrada({ onIn, expired }) {
         <button type="submit" className="btn-on" disabled={busy || !ready}>{busy ? 'Un momento…' : reg ? 'Crear cuenta y entrar' : 'Entrar'}</button>
         {err && <span className="err" role="alert">{err}</span>}
       </form>
+    </div>
+  );
+}
+
+// Pinga saluda mientras se prepara el navegador: los 6 dibujos de /sprites/carga pasan en bucle.
+function Bienvenida({ user, onDone }) {
+  const [frame, setFrame] = useState(1);
+  useEffect(() => {
+    const t = setInterval(() => setFrame((n) => (n % 6) + 1), 110);
+    const end = setTimeout(onDone, 1900);
+    return () => { clearInterval(t); clearTimeout(end); };
+  }, [onDone]);
+  const name = (user.display || user.username).replace(/^\(DIOS\)\s*/, '');
+  return (
+    <div className="welcome pp" role="status">
+      <div className="welcome-ring" aria-hidden="true" />
+      <img className="welcome-pinga" src={`/sprites/carga/${frame}.webp`} alt="" />
+      <img className="welcome-logo" src="/sprites/logo.webp" alt="ProxyPinga" />
+      <p className="welcome-hi">Hola, {name}</p>
+      <span className="welcome-bar" aria-hidden="true" />
     </div>
   );
 }
@@ -69,9 +92,11 @@ function App() {
     setExpired(!!wasExpired);
     setMe(null);
   };
+  const [greeting, setGreeting] = useState(null);
   if (me === undefined) return null;
-  if (!me) return <Entrada expired={expired} onIn={(u) => { setExpired(false); setMe(u); }} />;
-  return <Browser me={me} onLogout={logout} />;
+  if (greeting) return <Bienvenida user={greeting} onDone={() => { setMe(greeting); setGreeting(null); }} />;
+  if (!me) return <Entrada expired={expired} onIn={(u) => { setExpired(false); setGreeting(u); }} />;
+  return <Browser me={me} setMe={setMe} onLogout={logout} />;
 }
 
 createRoot(document.getElementById('root')).render(<StrictMode><App /></StrictMode>);

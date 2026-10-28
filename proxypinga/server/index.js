@@ -71,7 +71,9 @@ function applyRules() {
 logging.set_level(logging.NONE);
 Object.assign(wisp.options, {
   allow_udp_streams: false,
-  // DNS sin filtros: 1.1.1.3 es el de Cloudflare "para familias" y bloquea webs.
+  // wisp solo mira dns_servers si el metodo es "resolve"; con el de por defecto ("lookup")
+  // usaba el DNS del sistema, que puede venir filtrado y devolver paginas de bloqueo.
+  dns_method: 'resolve',
   dns_servers: ['1.1.1.1', '8.8.8.8'],
   dns_result_order: 'ipv4first',
 });

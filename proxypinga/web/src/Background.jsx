@@ -83,10 +83,20 @@ function Waves() {
     });
     return out;
   }, []);
+  const svg = useRef(null);
+  // Firefox no escala stroke-dasharray con pathLength, así que medimos cada curva y
+  // dejamos el largo en una variable CSS para que la animación recorra la línea entera.
+  useEffect(() => {
+    svg.current?.querySelectorAll('path').forEach((p) => {
+      const len = p.getTotalLength();
+      p.style.strokeDasharray = `${(len * 0.55).toFixed(1)}px ${(len * 0.45).toFixed(1)}px`;
+      p.style.setProperty('--pp-dash', `${-len.toFixed(1)}px`);
+    });
+  }, [paths]);
   return (
-    <svg className="pp-wave pp-fade bg-fill" viewBox="0 0 696 316" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true">
+    <svg ref={svg} className="pp-wave pp-fade bg-fill" viewBox="0 0 696 316" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true">
       {paths.map((w, i) => (
-        <path key={i} d={w.d} pathLength="1" stroke="var(--on)" strokeWidth={w.w} strokeOpacity={w.op} style={{ animationDuration: w.dur + 's' }} />
+        <path key={i} d={w.d} stroke="var(--on)" strokeWidth={w.w} strokeOpacity={w.op} style={{ animationDuration: w.dur + 's' }} />
       ))}
     </svg>
   );
