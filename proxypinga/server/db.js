@@ -35,6 +35,10 @@ db.exec(`
     at INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS visits_user_at ON visits(user_id, at DESC);
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
   CREATE TABLE IF NOT EXISTS rules (
     id INTEGER PRIMARY KEY,
     kind TEXT NOT NULL CHECK (kind IN ('block', 'redirect')),
@@ -138,3 +142,10 @@ export const rules = {
     .run(kind, pattern, target || null, Date.now()),
   remove: (id) => db.prepare('DELETE FROM rules WHERE id = ?').run(id),
 };
+
+export const settings = {
+  get: (key, fallback = null) => db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? fallback,
+  set: (key, value) => db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, String(value)),
+};
+
+export const inviteCode = () => randomBytes(4).toString('hex').slice(0, 6).toUpperCase();

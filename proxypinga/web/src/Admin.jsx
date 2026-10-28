@@ -167,6 +167,34 @@ function Rules({ rules, reload }) {
   );
 }
 
+function Registro() {
+  const [reg, setReg] = useState({ enabled: false, code: '' });
+  const load = () => api.get('/api/admin/registration').then(setReg).catch(() => {});
+  useEffect(() => { load(); }, []);
+  const save = (body) => api.post('/api/admin/registration', body).then(setReg).catch(() => {});
+  return (
+    <div className="pp-card admin-form">
+      <div className="w-head">
+        <span className="w-title">Registro de compañeros</span>
+        <button type="button" role="switch" aria-checked={reg.enabled} aria-label="Permitir registro"
+          className={'switch' + (reg.enabled ? ' on' : '')} onClick={() => save({ enabled: !reg.enabled })}>
+          <span className="pp-knob" />
+        </button>
+      </div>
+      <p className="muted small">
+        {reg.enabled
+          ? 'Cualquiera que tenga el código puede crearse una cuenta solo. Dáselo en clase y no lo publiques.'
+          : 'El registro está cerrado: las cuentas las creas tú aquí abajo.'}
+      </p>
+      <div className="row">
+        <code className="code-box">{reg.code}</code>
+        <button type="button" className="chip" onClick={() => navigator.clipboard?.writeText(reg.code)}>Copiar</button>
+        <button type="button" className="chip" onClick={() => save({ newCode: true })}>Cambiar código</button>
+      </div>
+    </div>
+  );
+}
+
 function Broadcast() {
   const [text, setText] = useState('');
   const [note, setNote] = useState('');
@@ -221,6 +249,7 @@ export default function Admin({ me, onOpen }) {
               ))}
             </div>
           </div>
+          <Registro />
           <NewUser onDone={reload} />
         </div>
         <div className="col wide">

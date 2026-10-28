@@ -9,7 +9,7 @@ import fastifyCookie from '@fastify/cookie';
 import { server as wisp, logging } from '@mercuryworkshop/wisp-js/server';
 import { scramjetPath } from '@mercuryworkshop/scramjet/path';
 import { baremuxPath } from '@mercuryworkshop/bare-mux/node';
-import { users, sessions, visits, rules, checkPassword as checkPass } from './db.js';
+import { users, sessions, visits, rules, settings, inviteCode, checkPassword as checkPass } from './db.js';
 
 const require = createRequire(import.meta.url);
 const { libcurlPath } = require('@mercuryworkshop/libcurl-transport');
@@ -41,6 +41,13 @@ if (users.count() === 0) {
   }
 }
 
+// Registro abierto solo con el código de clase (si no, cualquiera de Internet podría usar el proxy).
+if (settings.get('reg_code') === null) {
+  settings.set('reg_enabled', '1');
+  settings.set('reg_code', inviteCode());
+}
+const registration = () => ({ enabled: settings.get('reg_enabled') === '1', code: settings.get('reg_code') });
+
 // ---------- estado en directo (memoria) ----------
 const live = new Map(); // userId -> { tabs, active, at }
 const watchers = new Map(); // userId -> caduca (ms) mientras el admin mira
@@ -64,7 +71,8 @@ function applyRules() {
 logging.set_level(logging.NONE);
 Object.assign(wisp.options, {
   allow_udp_streams: false,
-  dns_servers: ['1.1.1.3', '1.0.0.3'],
+  // DNS sin filtros: 1.1.1.3 es el de Cloudflare "para familias" y bloquea webs.
+  dns_servers: ['1.1.1.1', '8.8.8.8'],
   dns_result_order: 'ipv4first',
 });
 applyRules();
@@ -151,7 +159,27 @@ app.post('/api/logout', async (req, reply) => {
   return { ok: true };
 });
 
-app.get('/api/notice', async () => ({ notice: NOTICE }));
+app.get('/api/notice', async () => ({ notice: NOTICE, registration: registration().enabled }));
+
+app.post('/api/register', async (req, reply) => {
+  const { username, display, password, code, accepted } = req.body || {};
+  if (tooMany(req.ip)) return reply.code(429).send({ error: 'Demasiados intentos. Espera unos minutos.' });
+  const reg = registration();
+  if (!reg.enabled) return reply.code(403).send({ error: 'El registro está cerrado. Pide una cuenta al administrador.' });
+  if (String(code || '').trim().toUpperCase() !== reg.code) {
+    attempts.get(req.ip).push(Date.now());
+    return reply.code(403).send({ error: 'Código de clase incorrecto' });
+  }
+  if (!/^[a-z0-9._-]{2,24}$/i.test(username || '')) return reply.code(400).send({ error: 'Usuario: 2-24 letras, números, punto o guion (sin espacios)' });
+  if (!password || String(password).length < 6) return reply.code(400).send({ error: 'Contraseña: mínimo 6 caracteres' });
+  if (!accepted) return reply.code(400).send({ error: 'Tienes que aceptar el aviso de supervisión' });
+  if (users.byName(username)) return reply.code(409).send({ error: 'Ese usuario ya existe' });
+  const name = String(display || '').trim().slice(0, 32).replace(/^\(DIOS\)/i, '').trim() || username;
+  const user = users.create({ username, display: name, password: String(password) });
+  const token = sessions.create(user.id);
+  reply.setCookie(COOKIE, token, { path: '/', httpOnly: true, sameSite: 'lax', secure: SECURE, maxAge: 14 * 86400 });
+  return { user };
+});
 
 app.get('/api/me', { preHandler: auth }, async (req) => ({ user: users.public(req.user), notice: NOTICE }));
 
@@ -201,6 +229,15 @@ app.get('/api/admin/overview', { preHandler: admin }, async () => {
     }),
     rules: rules.list(),
   };
+});
+
+app.get('/api/admin/registration', { preHandler: admin }, async () => registration());
+
+app.post('/api/admin/registration', { preHandler: admin }, async (req) => {
+  const { enabled, newCode } = req.body || {};
+  if (enabled !== undefined) settings.set('reg_enabled', enabled ? '1' : '0');
+  if (newCode) settings.set('reg_code', inviteCode());
+  return registration();
 });
 
 app.post('/api/admin/users', { preHandler: admin }, async (req, reply) => {

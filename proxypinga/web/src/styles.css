@@ -309,3 +309,4 @@ input::placeholder, textarea::placeholder { color: inherit; opacity: .6; }
   .sc-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .lay-panel .widgets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+.code-box { flex: 1; min-width: 90px; text-align: center; font-family: ui-monospace, monospace; font-size: 20px; font-weight: 800; letter-spacing: .18em; padding: 8px 10px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
