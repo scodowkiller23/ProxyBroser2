@@ -34,3 +34,10 @@ if [ -n "$C" ]; then
 else
   echo "contenedor app: no encontrado"
 fi
+echo "-- version servida"
+D2=143-47-39-212.sslip.io
+IDX=$(curl -s -m 15 --resolve $D2:443:127.0.0.1 https://$D2/)
+for A in $(echo "$IDX" | grep -o 'assets/index-[A-Za-z0-9_-]*\.\(js\|css\)'); do
+  B=$(curl -s -m 20 --resolve $D2:443:127.0.0.1 "https://$D2/$A")
+  echo "$A -> $(echo "$B" | wc -c) bytes | olas=$(echo "$B" | grep -c 'getTotalLength\|pp-dash') bienvenida=$(echo "$B" | grep -c 'welcome-pinga\|welcome-ring') usermenu=$(echo "$B" | grep -c 'usermenu')"
+done
