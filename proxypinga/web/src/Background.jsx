@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { motion } from 'motion/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { gradientParams } from './theme.js';
 
 const VS = '#version 300 es\nin vec4 a_position;void main(){gl_Position=a_position;}';
@@ -68,37 +67,39 @@ function Gradient({ params }) {
   return <canvas ref={ref} className="pp-fade bg-fill" aria-hidden="true" />;
 }
 
-// Las olas son el componente de la plantilla tal cual, con Framer Motion: anima
-// pathLength y pathOffset, que es lo que hace que las lineas fluyan de verdad.
+// Olas: mismo dibujo que la plantilla, pero animadas con <animate> del propio SVG.
+// Con Framer Motion eran 72 lineas movidas desde JavaScript en cada fotograma y el
+// navegador no daba abasto. Aqui el navegador lo hace solo y va fino.
+function Wave({ d, w, op, dur }) {
+  const ref = useRef(null);
+  const [len, setLen] = useState(0);
+  // El patron de trazos va en unidades reales de la curva: Firefox no escala
+  // stroke-dasharray con pathLength, asi que medimos cada una.
+  useEffect(() => { setLen(ref.current?.getTotalLength() || 0); }, [d]);
+  return (
+    <path ref={ref} d={d} stroke="var(--on)" strokeWidth={w} strokeOpacity={op}
+      strokeDasharray={len ? `${(len * 0.35).toFixed(0)} ${(len * 0.65).toFixed(0)}` : undefined}>
+      {len > 0 && <animate attributeName="stroke-dashoffset" from="0" to={-len.toFixed(0)}
+        dur={dur + 's'} repeatCount="indefinite" />}
+    </path>
+  );
+}
+
 function Waves({ pos }) {
-  const paths = Array.from({ length: 36 }, (_, i) => ({
-    id: i,
-    d: `M-${380 - i * 5 * pos} -${189 + i * 6}C-${380 - i * 5 * pos} -${189 + i * 6} -${312 - i * 5 * pos} ${216 - i * 6} ${152 - i * 5 * pos} ${343 - i * 6}C${616 - i * 5 * pos} ${470 - i * 6} ${684 - i * 5 * pos} ${875 - i * 6} ${684 - i * 5 * pos} ${875 - i * 6}`,
-    width: 0.5 + i * 0.03,
-  }));
+  const paths = useMemo(() => Array.from({ length: 36 }, (_, i) => {
+    const k = i * 5 * pos;
+    return {
+      id: i,
+      d: `M-${380 - k} -${189 + i * 6}C-${380 - k} -${189 + i * 6} -${312 - k} ${216 - i * 6} ${152 - k} ${343 - i * 6}C${616 - k} ${470 - i * 6} ${684 - k} ${875 - i * 6} ${684 - k} ${875 - i * 6}`,
+      w: (0.5 + i * 0.03).toFixed(2),
+      op: Math.min(1, 0.1 + i * 0.03) * 0.6,
+      dur: 16 + ((i * 37 + (pos > 0 ? 3 : 7)) % 9),
+    };
+  }), [pos]);
 
   return (
     <svg className="pp-wave pp-fade bg-fill" viewBox="0 0 696 316" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true">
-      {paths.map((path) => (
-        <motion.path
-          key={path.id}
-          d={path.d}
-          stroke="var(--on)"
-          strokeWidth={path.width}
-          strokeOpacity={0.1 + path.id * 0.03}
-          initial={{ pathLength: 0.3, opacity: 0.6 }}
-          animate={{
-            pathLength: 1,
-            opacity: [0.3, 0.6, 0.3],
-            pathOffset: [0, 1, 0],
-          }}
-          transition={{
-            duration: 20 + Math.random() * 10,
-            repeat: Infinity,
-            ease: 'linear',
-          }}
-        />
-      ))}
+      {paths.map((p) => <Wave key={p.id} {...p} />)}
     </svg>
   );
 }
