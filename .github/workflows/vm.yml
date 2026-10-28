@@ -31,7 +31,7 @@ jobs:
       - name: Ejecutar
         env:
           ADMIN_PASSWORD: ${{ secrets.PP_ADMIN_PASSWORD }}
-          DOMAIN: ${{ vars.PP_DOMAIN || '143-47-39-212.sslip.io' }}
+          DOMAIN: ${{ vars.PP_DOMAIN || 'proxypinga.duckdns.org' }}
         run: |
           set -o pipefail
           case "${{ inputs.comando }}" in

@@ -1,4 +1,4 @@
-{$DOMAIN} {
+{$DOMAIN}, 143-47-39-212.sslip.io {
 	encode zstd gzip
 	# El index.html nunca se cachea, para que un cambio llegue con un recargado normal.
 	@html path / /index.html
