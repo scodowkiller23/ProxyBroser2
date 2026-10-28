@@ -1,0 +1,42 @@
+name: Máquina Oracle
+
+on:
+  workflow_dispatch:
+    inputs:
+      comando:
+        description: "Qué ejecutar en la máquina"
+        default: "estado"
+        type: choice
+        options: [estado, desplegar]
+
+concurrency: vm
+
+jobs:
+  vm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Conectar
+        env:
+          KEY: ${{ secrets.VM_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -T 15 143.47.39.212 >> ~/.ssh/known_hosts
+      - name: Ejecutar
+        run: |
+          set -o pipefail
+          if [ "${{ inputs.comando }}" = desplegar ]; then
+            rsync -az --delete --exclude .git ./ ubuntu@143.47.39.212:~/proxypinga/
+            ssh ubuntu@143.47.39.212 'cd ~/proxypinga && bash deploy/desplegar.sh' 2>&1 | tee salida.txt
+          else
+            ssh ubuntu@143.47.39.212 'bash -s' < deploy/estado.sh 2>&1 | tee salida.txt
+          fi
+      - name: Resumen
+        if: always()
+        run: |
+          [ -f salida.txt ] || exit 0
+          tail -n 40 salida.txt | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}' | sed 's/^/::notice title=salida::/'
+          echo
