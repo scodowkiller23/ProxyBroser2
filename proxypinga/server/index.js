@@ -141,7 +141,7 @@ function tooMany(ip) {
 }
 
 app.post('/api/login', async (req, reply) => {
-  const { username, password, accepted } = req.body || {};
+  const { username, password } = req.body || {};
   if (tooMany(req.ip)) return reply.code(429).send({ error: 'Demasiados intentos. Espera unos minutos.' });
   const user = username && users.byName(String(username).trim());
   if (!user || !password || !checkPass(String(password), user.pass)) {
@@ -149,7 +149,6 @@ app.post('/api/login', async (req, reply) => {
     return reply.code(401).send({ error: 'Usuario o contraseña incorrectos' });
   }
   if (user.banned) return reply.code(403).send({ error: 'Cuenta bloqueada' + (user.ban_reason ? ': ' + user.ban_reason : '') });
-  if (!accepted) return reply.code(400).send({ error: 'Tienes que aceptar el aviso de supervisión' });
   const token = sessions.create(user.id);
   reply.setCookie(COOKIE, token, { path: '/', httpOnly: true, sameSite: 'lax', secure: SECURE, maxAge: 14 * 86400 });
   return { user: users.public(user) };

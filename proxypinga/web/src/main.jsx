@@ -26,18 +26,18 @@ function Entrada({ onIn, expired }) {
     try {
       const r = reg
         ? await api.post('/api/register', { ...f, accepted })
-        : await api.post('/api/login', { username: f.username, password: f.password, accepted });
+        : await api.post('/api/login', { username: f.username, password: f.password });
       onIn(r.user);
     } catch (x) { setErr(x.message); } finally { setBusy(false); }
   };
 
-  const ready = f.username && f.password && accepted && (!reg || f.code);
+  const ready = f.username && f.password && (!reg || (accepted && f.code));
 
   return (
     <div className="login pp">
       <form className={'login-card pp-card pp-in' + (reg ? ' is-reg' : '')} onSubmit={submit}>
         <img src="/sprites/bienvenida.webp" alt="" className="login-hero" />
-        <h1 key={mode} className="pp-swap-title">{reg ? 'Crear tu cuenta' : 'Entrar en ProxyPinga'}</h1>
+        <h1 key={"titulo-" + mode} className="pp-swap-title">{reg ? 'Crear tu cuenta' : 'Entrar en ProxyPinga'}</h1>
         {canRegister && (
           <div className="chips tabs2">
             <span className="tabs2-pill" style={{ transform: `translateX(${reg ? 100 : 0}%)` }} aria-hidden="true" />
@@ -45,7 +45,7 @@ function Entrada({ onIn, expired }) {
             <button type="button" className={'chip' + (reg ? ' on' : '')} onClick={() => { setMode('register'); setErr(''); }}>Registrarme</button>
           </div>
         )}
-        <div key={mode} className="login-fields">
+        <div key={"campos-" + mode} className="login-fields">
           <label style={{ '--i': 0 }}>Usuario<input autoComplete="username" value={f.username} onChange={upd('username')} autoFocus /></label>
           {reg && <label style={{ '--i': 1 }}>Nombre visible (opcional)<input value={f.display} onChange={upd('display')} placeholder="Como quieres que te vean" /></label>}
           <label style={{ '--i': reg ? 2 : 1 }}>Contraseña<input type="password" autoComplete={reg ? 'new-password' : 'current-password'} value={f.password} onChange={upd('password')} /></label>
@@ -55,7 +55,7 @@ function Entrada({ onIn, expired }) {
           <img src="/sprites/supervisada.webp" alt="" width="54" />
           <p>{notice}</p>
         </div>
-        <label className="check"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /> Lo he leído y acepto</label>
+        {reg && <label className="check"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /> Lo he leído y acepto</label>}
         <button type="submit" className="btn-on" disabled={busy || !ready}>{busy ? 'Un momento…' : reg ? 'Crear cuenta y entrar' : 'Entrar'}</button>
         {err && <span className="err" role="alert">{err}</span>}
       </form>

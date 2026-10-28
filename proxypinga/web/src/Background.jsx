@@ -77,7 +77,7 @@ function Waves() {
           d: `M-${a} -${189 + i * 6}C-${a} -${189 + i * 6} -${b} ${216 - i * 6} ${c} ${343 - i * 6}C${e} ${470 - i * 6} ${f} ${875 - i * 6} ${f} ${875 - i * 6}`,
           w: (0.5 + i * 0.03).toFixed(2),
           op: Math.min(1, 0.1 + i * 0.03) * 0.55,
-          dur: 20 + ((i * 37 + (pos > 0 ? 3 : 7)) % 10),
+          dur: 7 + ((i * 37 + (pos > 0 ? 3 : 7)) % 5),
         });
       }
     });
@@ -89,8 +89,11 @@ function Waves() {
   useEffect(() => {
     svg.current?.querySelectorAll('path').forEach((p) => {
       const len = p.getTotalLength();
-      p.style.strokeDasharray = `${(len * 0.55).toFixed(1)}px ${(len * 0.45).toFixed(1)}px`;
-      p.style.setProperty('--pp-dash', `${-len.toFixed(1)}px`);
+      const trazo = len * 0.17;
+      const hueco = len * 0.23;
+      p.style.strokeDasharray = `${trazo.toFixed(1)}px ${hueco.toFixed(1)}px`;
+      // El desplazamiento recorre justo un trazo + un hueco, así el bucle no da saltos.
+      p.style.setProperty('--pp-dash', `${-(trazo + hueco).toFixed(1)}px`);
     });
   }, [paths]);
   return (
