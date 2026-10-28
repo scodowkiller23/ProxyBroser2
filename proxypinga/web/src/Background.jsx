@@ -83,21 +83,8 @@ function Waves() {
     });
     return out;
   }, []);
-  const svg = useRef(null);
-  // Firefox no escala stroke-dasharray con pathLength, así que medimos cada curva y
-  // dejamos el largo en una variable CSS para que la animación recorra la línea entera.
-  useEffect(() => {
-    svg.current?.querySelectorAll('path').forEach((p) => {
-      const len = p.getTotalLength();
-      const trazo = len * 0.17;
-      const hueco = len * 0.23;
-      p.style.strokeDasharray = `${trazo.toFixed(1)}px ${hueco.toFixed(1)}px`;
-      // El desplazamiento recorre justo un trazo + un hueco, así el bucle no da saltos.
-      p.style.setProperty('--pp-dash', `${-(trazo + hueco).toFixed(1)}px`);
-    });
-  }, [paths]);
   return (
-    <svg ref={svg} className="pp-wave pp-fade bg-fill" viewBox="0 0 696 316" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true">
+    <svg className="pp-wave pp-fade bg-fill" viewBox="0 0 696 316" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true">
       {paths.map((w, i) => (
         <path key={i} d={w.d} stroke="var(--on)" strokeWidth={w.w} strokeOpacity={w.op} style={{ animationDuration: w.dur + 's' }} />
       ))}
