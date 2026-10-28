@@ -7,9 +7,12 @@ on:
         description: "Qué ejecutar en la máquina"
         default: "estado"
         type: choice
-        options: [estado, desplegar]
+        options: [estado, desplegar, logs]
 
 concurrency: vm
+
+env:
+  VM: ubuntu@143.47.39.212
 
 jobs:
   vm:
@@ -26,17 +29,28 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -T 15 143.47.39.212 >> ~/.ssh/known_hosts
       - name: Ejecutar
+        env:
+          ADMIN_PASSWORD: ${{ secrets.PP_ADMIN_PASSWORD }}
+          DOMAIN: ${{ vars.PP_DOMAIN || '143-47-39-212.sslip.io' }}
         run: |
           set -o pipefail
-          if [ "${{ inputs.comando }}" = desplegar ]; then
-            rsync -az --delete --exclude .git ./ ubuntu@143.47.39.212:~/proxypinga/
-            ssh ubuntu@143.47.39.212 'cd ~/proxypinga && bash deploy/desplegar.sh' 2>&1 | tee salida.txt
-          else
-            ssh ubuntu@143.47.39.212 'bash -s' < deploy/estado.sh 2>&1 | tee salida.txt
-          fi
+          case "${{ inputs.comando }}" in
+            desplegar)
+              rsync -az --delete --exclude data --exclude .env --exclude node_modules --exclude web/dist \
+                proxypinga/ "$VM:proxypinga/"
+              printf 'DOMAIN=%s\nADMIN_PASSWORD=%s\n' "$DOMAIN" "$ADMIN_PASSWORD" | ssh "$VM" 'umask 077; cat > proxypinga/.env'
+              ssh "$VM" 'bash proxypinga/deploy.sh' 2>&1 | tee salida.txt
+              ;;
+            logs)
+              ssh "$VM" 'cd proxypinga && docker compose ps && docker compose logs --tail 40' 2>&1 | tee salida.txt
+              ;;
+            *)
+              ssh "$VM" 'bash -s' < deploy/estado.sh 2>&1 | tee salida.txt
+              ;;
+          esac
       - name: Resumen
         if: always()
         run: |
           [ -f salida.txt ] || exit 0
-          tail -n 40 salida.txt | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}' | sed 's/^/::notice title=salida::/'
+          grep -v -i 'password' salida.txt | tail -n 45 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}' | sed 's/^/::notice title=salida::/'
           echo
