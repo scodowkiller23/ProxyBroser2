@@ -2,7 +2,7 @@ name: Conseguir VM Oracle
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/20 * * * *"
   workflow_dispatch:
 
 concurrency: conseguir-vm-oracle
@@ -14,7 +14,7 @@ permissions:
 jobs:
   launch:
     runs-on: ubuntu-latest
-    timeout-minutes: 9
+    timeout-minutes: 58
     env:
       OCI_CLI_USER: ${{ secrets.OCI_USER }}
       OCI_CLI_TENANCY: ${{ secrets.OCI_TENANCY }}
@@ -42,21 +42,21 @@ jobs:
           IMG=$(oci compute image list -c "$C" --operating-system "Canonical Ubuntu" --operating-system-version "24.04" \
             --shape VM.Standard.A1.Flex --sort-by TIMECREATED --query 'data[0].id' --raw-output)
           echo "${{ secrets.SSH_PUB }}" > key.pub
-          for i in 1 2 3 4 5 6 7; do
-            [ "$SECONDS" -gt 330 ] && break
+          for i in $(seq 1 60); do
+            [ "$SECONDS" -gt 3200 ] && break
             if out=$(oci compute instance launch -c "$C" --availability-domain "$AD" --display-name proxypinga \
-                --shape VM.Standard.A1.Flex --shape-config '{"ocpus":4,"memoryInGBs":24}' \
+                --shape VM.Standard.A1.Flex --shape-config '{"ocpus":1,"memoryInGBs":6}' \
                 --image-id "$IMG" --subnet-id "$SUB" --assign-public-ip true --boot-volume-size-in-gbs 100 \
                 --ssh-authorized-keys-file key.pub --no-retry 2>&1); then
               echo "CREADA"
               gh issue create -R "$GITHUB_REPOSITORY" --title "Máquina de Oracle creada" \
-                --body "El workflow ha conseguido crear la máquina proxypinga (4 OCPU, 24 GB) en Madrid. Mira su IP pública en Compute → Instances." || true
+                --body "El workflow ha conseguido crear la máquina proxypinga (1 OCPU, 6 GB; se puede ampliar a 4 OCPU y 24 GB editando la forma) en Madrid. Mira su IP pública en Compute → Instances." || true
               gh workflow disable "Conseguir VM Oracle" -R "$GITHUB_REPOSITORY" || true
               exit 0
             fi
             resumen=$(echo "$out" | grep -oE '"(code|message|status)": *[^,}]*' | tr '\n' ' ' | head -c 400 || true)
             if echo "$out" | grep -qiE "capacity|TooManyRequests|InternalError|\"status\": *(429|5[0-9][0-9])"; then
-              echo "::notice::$(date +%H:%M:%S) intento $i sin hueco o Oracle saturado, reintento en 60 s: $resumen"
+              echo "$(date +%H:%M:%S) intento $i sin hueco o Oracle saturado, reintento en 60 s: $resumen"
               sleep 60
             else
               echo "$out"
