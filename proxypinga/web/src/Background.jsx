@@ -83,10 +83,14 @@ function Waves() {
     });
     return out;
   }, []);
+  const quieto = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   return (
     <svg className="pp-wave pp-fade bg-fill" viewBox="0 0 696 316" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true">
       {paths.map((w, i) => (
-        <path key={i} d={w.d} stroke="var(--on)" strokeWidth={w.w} strokeOpacity={w.op} style={{ animationDuration: w.dur + 's' }} />
+        <path key={i} d={w.d} stroke="var(--on)" strokeWidth={w.w} strokeOpacity={w.op} strokeDasharray="150 170">
+          {/* Animación del propio SVG en vez de CSS: Firefox la lleva desde siempre. */}
+          {!quieto && <animate attributeName="stroke-dashoffset" from="0" to="-320" dur={w.dur + 's'} repeatCount="indefinite" />}
+        </path>
       ))}
     </svg>
   );
