@@ -183,6 +183,21 @@ app.post('/api/register', async (req, reply) => {
 
 app.get('/api/me', { preHandler: auth }, async (req) => ({ user: users.public(req.user), notice: NOTICE }));
 
+// Foto de perfil: el navegador la recorta a 128px y la manda como data URL.
+app.post('/api/avatar', { preHandler: auth, bodyLimit: 256 * 1024 }, async (req, reply) => {
+  const { avatar } = req.body || {};
+  if (avatar === null || avatar === '') {
+    users.update(req.user.id, { avatar: null });
+    return { user: users.public(users.byId(req.user.id)) };
+  }
+  if (typeof avatar !== 'string' || !/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(avatar)) {
+    return reply.code(400).send({ error: 'Imagen no válida' });
+  }
+  if (avatar.length > 180 * 1024) return reply.code(413).send({ error: 'La imagen pesa demasiado' });
+  users.update(req.user.id, { avatar });
+  return { user: users.public(users.byId(req.user.id)) };
+});
+
 app.post('/api/password', { preHandler: auth }, async (req, reply) => {
   const { current, next } = req.body || {};
   if (!next || String(next).length < 6) return reply.code(400).send({ error: 'Mínimo 6 caracteres' });

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import Icon from './icons.jsx';
 import { BG_MODES, ENGINES, FONTS, LAYOUTS, PALETTES, PRESETS, RADII, TAB_STYLES, WEIGHTS, WIDGETS, gradientParams } from './theme.js';
-import { api } from './api.js';
 
 function Chips({ labels, value, onPick, cols }) {
   return (
@@ -30,28 +29,7 @@ function shrinkImage(file) {
   });
 }
 
-function PasswordForm() {
-  const [cur, setCur] = useState('');
-  const [next, setNext] = useState('');
-  const [msg, setMsg] = useState('');
-  const save = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/api/password', { current: cur, next });
-      setMsg('Contraseña cambiada'); setCur(''); setNext('');
-    } catch (err) { setMsg(err.message); }
-  };
-  return (
-    <form className="pw-form" onSubmit={save}>
-      <input type="password" autoComplete="current-password" placeholder="Contraseña actual" value={cur} onChange={(e) => setCur(e.target.value)} />
-      <input type="password" autoComplete="new-password" placeholder="Nueva (mín. 6)" value={next} onChange={(e) => setNext(e.target.value)} />
-      <button type="submit" className="chip on">Cambiar</button>
-      {msg && <span className="muted small">{msg}</span>}
-    </form>
-  );
-}
-
-export default function Drawer({ s, set, reset, open, onClose, editShortcuts, setEditShortcuts, onLogout }) {
+export default function Drawer({ s, set, reset, open, onClose, editShortcuts, setEditShortcuts }) {
   const gp = gradientParams(s);
   const setG = (k) => (e) => set({ g: { c1: gp[0], c2: gp[1], c3: gp[2], ...(s.g || {}), [k]: e.target.value } });
   const setC = (k) => (e) => set({ custom: { ...s.custom, [k]: e.target.value }, pal: -1 });
@@ -180,8 +158,7 @@ export default function Drawer({ s, set, reset, open, onClose, editShortcuts, se
 
       <section>
         <h2>Cuenta</h2>
-        <PasswordForm />
-        <button type="button" className="chip wide" onClick={onLogout}><Icon name="logout" size={15} /> Cerrar sesión</button>
+        <p className="muted small">Tu foto, la contraseña y cerrar sesión están en tu icono, arriba a la derecha.</p>
       </section>
     </aside>
   );

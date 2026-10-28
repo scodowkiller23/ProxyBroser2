@@ -5,6 +5,7 @@ import NewTab from './NewTab.jsx';
 import Drawer from './Drawer.jsx';
 import Games from './Games.jsx';
 import Admin from './Admin.jsx';
+import UserMenu from './UserMenu.jsx';
 import { api } from './api.js';
 import { initProxy, toUrl, hostOf, matchRule } from './proxy.js';
 import { ENGINES, cssVars, useSettings } from './theme.js';
@@ -62,7 +63,7 @@ function Blocked({ url }) {
   );
 }
 
-export default function Browser({ me, onLogout }) {
+export default function Browser({ me, setMe, onLogout }) {
   const [s, set, reset] = useSettings(me.username, me.display.replace(/^\(DIOS\)\s*/, ''));
   const [tabs, setTabs] = useState(() => [newTab()]);
   const [activeId, setActiveId] = useState(tabs[0].id);
@@ -260,7 +261,7 @@ export default function Browser({ me, onLogout }) {
             value={address} onChange={(e) => setAddress(e.target.value)} onFocus={(e) => e.target.select()} />
           {isWeb && <button type="button" className="star" aria-label="Añadir a accesos directos" onClick={bookmark}><Icon name="star" size={16} /></button>}
         </form>
-        <div className="avatar pp-t" title={me.display}>{(s.name || me.username).charAt(0).toUpperCase()}</div>
+        <UserMenu me={me} setMe={setMe} displayName={s.name} onLogout={() => onLogout(false)} />
       </div>
 
       <div className="body">
@@ -314,7 +315,7 @@ export default function Browser({ me, onLogout }) {
         )}
 
         <Drawer s={s} set={set} reset={reset} open={drawer} onClose={() => setDrawer(false)}
-          editShortcuts={editShortcuts} setEditShortcuts={setEditShortcuts} onLogout={() => onLogout(false)} />
+          editShortcuts={editShortcuts} setEditShortcuts={setEditShortcuts} />
       </div>
 
       {messages.length > 0 && (

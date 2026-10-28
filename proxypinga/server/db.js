@@ -48,6 +48,12 @@ db.exec(`
   );
 `);
 
+// La base de datos ya está creada en la máquina, así que las columnas nuevas se añaden aquí.
+const columns = db.prepare('SELECT name FROM pragma_table_info(?)');
+if (!columns.all('users').some((c) => c.name === 'avatar')) {
+  db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
+}
+
 const SESSION_DAYS = 14;
 
 export function hashPassword(password) {
@@ -68,6 +74,7 @@ const publicUser = (u) => u && {
   username: u.username,
   display: u.display,
   admin: !!u.admin,
+  avatar: u.avatar || null,
   banned: !!u.banned,
   banReason: u.ban_reason,
   createdAt: u.created_at,
@@ -84,8 +91,9 @@ export const users = {
       .run(username, display || username, hashPassword(password), admin ? 1 : 0, Date.now());
     return publicUser(users.byId(r.lastInsertRowid));
   },
-  update(id, { display, password, banned, banReason, admin }) {
+  update(id, { display, password, banned, banReason, admin, avatar }) {
     if (display !== undefined) db.prepare('UPDATE users SET display = ? WHERE id = ?').run(display, id);
+    if (avatar !== undefined) db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatar || null, id);
     if (password) db.prepare('UPDATE users SET pass = ? WHERE id = ?').run(hashPassword(password), id);
     if (admin !== undefined) db.prepare('UPDATE users SET admin = ? WHERE id = ?').run(admin ? 1 : 0, id);
     if (banned !== undefined) {
