@@ -68,7 +68,8 @@ function applyRules() {
   wisp.options.hostname_blacklist = blocked.length ? blocked : null;
 }
 
-logging.set_level(logging.NONE);
+// Dejamos los avisos de wisp en el log del contenedor para poder diagnosticar fallos.
+logging.set_level(logging.WARN);
 Object.assign(wisp.options, {
   allow_udp_streams: false,
   // wisp solo mira dns_servers si el metodo es "resolve"; con el de por defecto ("lookup")
