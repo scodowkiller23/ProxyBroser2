@@ -7,7 +7,7 @@ on:
         description: "Qué ejecutar en la máquina"
         default: "estado"
         type: choice
-        options: [estado, desplegar, logs]
+        options: [estado, desplegar, logs, desplegar-n8n, logs-n8n]
 
 concurrency: vm
 
@@ -32,14 +32,41 @@ jobs:
         env:
           ADMIN_PASSWORD: ${{ secrets.PP_ADMIN_PASSWORD }}
           DOMAIN: ${{ vars.PP_DOMAIN || 'proxypinga.duckdns.org' }}
+          N8N_DOMAIN: ${{ vars.N8N_DOMAIN || 'n8n.proxypinga.duckdns.org' }}
+          # Claves opcionales que leen los workflows de n8n con $env.*; las que no estén definidas no se escriben.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          WORKER_SHARED_SECRET: ${{ secrets.WORKER_SHARED_SECRET }}
+          YOUTUBE_CHANNEL_ID: ${{ vars.YOUTUBE_CHANNEL_ID || 'UC2rvSr6a5v8EenO9E7gR5nw' }}
+          GITHUB_REPO: ${{ vars.CANAL_REPO || 'scodowkiller23/CanalYoutube' }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL || 'claude-opus-5-5' }}
+          CLAUDE_MODEL_FAST: ${{ vars.CLAUDE_MODEL_FAST || 'claude-haiku-5-5' }}
+          WORKER_URL: ${{ vars.WORKER_URL }}
         run: |
           set -o pipefail
           case "${{ inputs.comando }}" in
             desplegar)
               rsync -az --delete --exclude data --exclude .env --exclude node_modules --exclude web/dist \
                 proxypinga/ "$VM:proxypinga/"
-              printf 'DOMAIN=%s\nADMIN_PASSWORD=%s\n' "$DOMAIN" "$ADMIN_PASSWORD" | ssh "$VM" 'umask 077; cat > proxypinga/.env'
+              printf 'DOMAIN=%s\nADMIN_PASSWORD=%s\nN8N_DOMAIN=%s\n' "$DOMAIN" "$ADMIN_PASSWORD" "$N8N_DOMAIN" | ssh "$VM" 'umask 077; cat > proxypinga/.env'
               ssh "$VM" 'bash proxypinga/deploy.sh' 2>&1 | tee salida.txt
+              ;;
+            desplegar-n8n)
+              # Sube n8n + Postgres (canal/) y recrea solo el Caddy del proxy para que sirva el dominio de n8n.
+              rsync -az --exclude .env --exclude app.env --exclude backups canal/ "$VM:canal/"
+              rsync -az --delete --exclude data --exclude .env --exclude node_modules --exclude web/dist \
+                proxypinga/ "$VM:proxypinga/"
+              printf 'DOMAIN=%s\nADMIN_PASSWORD=%s\nN8N_DOMAIN=%s\n' "$DOMAIN" "$ADMIN_PASSWORD" "$N8N_DOMAIN" | ssh "$VM" 'umask 077; cat > proxypinga/.env'
+              for k in ANTHROPIC_API_KEY YOUTUBE_API_KEY TELEGRAM_CHAT_ID WORKER_SHARED_SECRET YOUTUBE_CHANNEL_ID GITHUB_REPO CLAUDE_MODEL CLAUDE_MODEL_FAST WORKER_URL; do
+                if [ -n "${!k}" ]; then printf '%s=%s\n' "$k" "${!k}"; fi
+              done > app.env
+              ssh "$VM" 'umask 077; cat > canal/app.env' < app.env
+              rm -f app.env
+              ssh "$VM" "N8N_DOMAIN=$N8N_DOMAIN bash canal/deploy.sh && cd proxypinga && docker compose up -d --no-deps --force-recreate caddy && sleep 3 && docker compose logs --tail 10 caddy" 2>&1 | tee salida.txt
+              ;;
+            logs-n8n)
+              ssh "$VM" 'cd canal && docker compose ps && docker compose logs --tail 40' 2>&1 | tee salida.txt
               ;;
             logs)
               ssh "$VM" 'cd proxypinga && docker compose ps && docker compose logs --tail 40' 2>&1 | tee salida.txt
