@@ -2,6 +2,7 @@
 # Se ejecuta en la máquina de Oracle desde el workflow "Máquina Oracle" (modo desplegar-n8n).
 # Requiere N8N_DOMAIN en el entorno. Las claves internas se generan aquí la primera vez y no salen de la máquina.
 set -euo pipefail
+trap 'echo "deploy.sh: fallo en la línea $LINENO" >&2' ERR
 cd "$(dirname "$0")"
 : "${N8N_DOMAIN:?falta N8N_DOMAIN}"
 
@@ -20,7 +21,9 @@ mv .env.tmp .env
 # Copia de seguridad diaria a las 04:00 (se guardan 7 días en ~/canal/backups).
 mkdir -p backups
 CRON="0 4 * * * cd $PWD && docker compose exec -T postgres pg_dumpall -U canal | gzip > backups/\$(date +\\%F).sql.gz && find backups -name '*.sql.gz' -mtime +7 -delete"
-( crontab -l 2>/dev/null | grep -v 'pg_dumpall -U canal' ; echo "$CRON" ) | crontab -
+# Sin crontab previo, "crontab -l" falla: por eso el "|| true".
+EXISTENTE=$(crontab -l 2>/dev/null | grep -v 'pg_dumpall -U canal' || true)
+printf '%s\n%s\n' "$EXISTENTE" "$CRON" | sed '/^$/d' | crontab -
 
 docker compose pull -q
 docker compose up -d --remove-orphans

@@ -32,7 +32,7 @@ jobs:
         env:
           ADMIN_PASSWORD: ${{ secrets.PP_ADMIN_PASSWORD }}
           DOMAIN: ${{ vars.PP_DOMAIN || 'proxypinga.duckdns.org' }}
-          N8N_DOMAIN: ${{ vars.N8N_DOMAIN || 'n8n.proxypinga.duckdns.org' }}
+          N8N_DOMAIN: ${{ vars.N8N_DOMAIN || 'n8n.canalyoutube.duckdns.org' }}
           # Claves opcionales que leen los workflows de n8n con $env.*; las que no estén definidas no se escriben.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
