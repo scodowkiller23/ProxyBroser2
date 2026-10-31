@@ -16,7 +16,7 @@ services:
       - "443:443/udp"
     environment:
       DOMAIN: ${DOMAIN}
-      N8N_DOMAIN: ${N8N_DOMAIN:-n8n.proxypinga.duckdns.org}
+      N8N_DOMAIN: ${N8N_DOMAIN:-n8n.canalyoutube.duckdns.org}
     networks: [default, web]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
