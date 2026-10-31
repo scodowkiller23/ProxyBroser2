@@ -5,3 +5,9 @@
 	header @html Cache-Control "no-store"
 	reverse_proxy app:8080
 }
+
+# n8n del canal de YouTube (../canal). Si n8n no está arrancado, este dominio da 502 y el proxy sigue igual.
+{$N8N_DOMAIN}, n8n.143-47-39-212.sslip.io {
+	encode zstd gzip
+	reverse_proxy n8n:5678
+}

@@ -5,6 +5,9 @@ sudo iptables -S INPUT | grep -E 'dport (80|443)' || echo "iptables: 80/443 NO a
 docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null
 D=proxypinga.duckdns.org
 echo "https: $(curl -s -o /dev/null -w '%{http_code} cert_ok=%{ssl_verify_result}' --resolve $D:443:127.0.0.1 https://$D/api/notice)"
+N=n8n.$D
+echo "n8n: $(curl -s -o /dev/null -w '%{http_code} cert_ok=%{ssl_verify_result}' --resolve $N:443:127.0.0.1 https://$N/healthz)"
+echo "memoria por contenedor: $(docker stats --no-stream --format '{{.Name}}={{.MemUsage}}' 2>/dev/null | tr '\n' ' ')"
 cd ~/proxypinga 2>/dev/null && docker compose logs caddy 2>&1 | grep -iE 'certificate obtained|error' | tail -5
 echo "-- salida a Internet"
 echo "ip publica (maquina): $(curl -s -m 10 https://api.ipify.org)"

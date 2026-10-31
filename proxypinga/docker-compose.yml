@@ -16,6 +16,8 @@ services:
       - "443:443/udp"
     environment:
       DOMAIN: ${DOMAIN}
+      N8N_DOMAIN: ${N8N_DOMAIN:-n8n.proxypinga.duckdns.org}
+    networks: [default, web]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -24,3 +26,8 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+
+# Red compartida con n8n (../canal) para que Caddy le pase el tráfico.
+networks:
+  web:
+    external: true
