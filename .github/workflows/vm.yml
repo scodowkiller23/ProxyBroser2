@@ -7,7 +7,7 @@ on:
         description: "Qué ejecutar en la máquina"
         default: "estado"
         type: choice
-        options: [estado, desplegar, logs, desplegar-n8n, logs-n8n]
+        options: [estado, desplegar, logs, desplegar-n8n, logs-n8n, resetear-acceso-n8n]
 
 concurrency: vm
 
@@ -64,6 +64,11 @@ jobs:
               ssh "$VM" 'umask 077; cat > canal/app.env' < app.env
               rm -f app.env
               ssh "$VM" "N8N_DOMAIN=$N8N_DOMAIN bash canal/deploy.sh && cd proxypinga && docker compose up -d --no-deps --force-recreate caddy && sleep 3 && docker compose logs --tail 10 caddy" 2>&1 | tee salida.txt
+              ;;
+            resetear-acceso-n8n)
+              # Olvidaste el correo o la contraseña de n8n: borra el acceso del propietario (workflows y credenciales se quedan).
+              # Al abrir n8n saldrá "Set up owner account" para poner correo y contraseña nuevos. Hazlo justo después.
+              ssh "$VM" 'cd canal && docker compose exec -T n8n n8n user-management:reset' 2>&1 | tee salida.txt
               ;;
             logs-n8n)
               ssh "$VM" 'cd canal && docker compose ps && docker compose logs --tail 40' 2>&1 | tee salida.txt
