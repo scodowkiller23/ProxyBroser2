@@ -18,7 +18,10 @@ services:
       - /etc/coturn/turnserver.conf
       - --realm=${DOMAIN}
       - --static-auth-secret=${TURN_SECRET}
-      - --external-ip=${TURN_PUBLIC_IP:-143.47.39.212}
+      # Sin esto coturn ofrece tambien las redes internas de Docker, que no sirven de nada.
+      - --listening-ip=${TURN_PRIVATE_IP:-10.0.0.29}
+      - --relay-ip=${TURN_PRIVATE_IP:-10.0.0.29}
+      - --external-ip=${TURN_PUBLIC_IP:-143.47.39.212}/${TURN_PRIVATE_IP:-10.0.0.29}
 
   caddy:
     image: caddy:2
