@@ -6,6 +6,20 @@ services:
     volumes:
       - ./data:/data
 
+  # TURN: repetidor de WebRTC para que Haxball y similares conecten con gente de fuera.
+  turn:
+    image: coturn/coturn:4.6
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command:
+      - -c
+      - /etc/coturn/turnserver.conf
+      - --realm=${DOMAIN}
+      - --static-auth-secret=${TURN_SECRET}
+      - --external-ip=${TURN_PUBLIC_IP:-143.47.39.212}
+
   caddy:
     image: caddy:2
     restart: unless-stopped

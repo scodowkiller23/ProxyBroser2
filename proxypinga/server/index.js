@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { createHmac } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +20,8 @@ const PORT = Number(process.env.PORT || 8080);
 const COOKIE = 'pp_sess';
 const SECURE = process.env.INSECURE_COOKIES !== '1';
 const VISIT_DAYS = Number(process.env.VISIT_DAYS || 30);
+const TURN_SECRET = process.env.TURN_SECRET || '';
+const TURN_HOST = process.env.TURN_HOST || process.env.DOMAIN || '';
 
 // Aviso que todos ven al entrar y que tienen que aceptar.
 const NOTICE = 'ProxyPinga es una red supervisada. El administrador puede ver qué webs visitas, '
@@ -181,6 +184,22 @@ app.post('/api/register', async (req, reply) => {
   const token = sessions.create(user.id);
   reply.setCookie(COOKIE, token, { path: '/', httpOnly: true, sameSite: 'lax', secure: SECURE, maxAge: 14 * 86400 });
   return { user };
+});
+
+// Credenciales temporales del TURN. WebRTC no pasa por el proxy, asi que cuando dos
+// jugadores no se ven directamente (cortafuegos, NAT) el trafico va por nuestro TURN.
+// coturn las valida con el mismo secreto, sin guardar usuarios.
+app.get('/api/turn', { preHandler: auth }, async () => {
+  if (!TURN_SECRET || !TURN_HOST) return { iceServers: [] };
+  const caduca = Math.floor(Date.now() / 1000) + 6 * 3600;
+  const username = `${caduca}:proxypinga`;
+  const credential = createHmac('sha1', TURN_SECRET).update(username).digest('base64');
+  return {
+    iceServers: [
+      { urls: `stun:${TURN_HOST}:3478` },
+      { urls: [`turn:${TURN_HOST}:3478?transport=udp`, `turn:${TURN_HOST}:3478?transport=tcp`], username, credential },
+    ],
+  };
 });
 
 app.get('/api/me', { preHandler: auth }, async (req) => ({ user: users.public(req.user), notice: NOTICE }));
